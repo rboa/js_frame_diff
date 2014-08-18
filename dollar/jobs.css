@@ -1,0 +1,45 @@
+a > .chevron {
+    -webkit-transform:rotate(90deg);
+    -moz-transform:rotate(90deg);
+    -o-transform:rotate(90deg);
+    transform:rotate(90deg);
+    -webkit-transition: -webkit-transform 0.50s;
+    transition: transform 0.50s;
+}
+
+a.collapsed > .chevron {
+    -webkit-transform:rotate(0deg);
+    -moz-transform:rotate(0deg);
+    -o-transform:rotate(0deg);
+    .rotate(0deg);
+}
+
+.glyphicon-eye-open, .glyphicon-th {
+	font-size: 1.3em;
+}
+
+h4.panel-title > span > a.btn {
+	/*vertical-align: bottom;*/
+}
+
+.h4-label {
+	margin-top: 0.2em;
+}
+
+.tab_bg_0 {
+    background-color: #effed8;
+    border-width: 1px;
+    border-color: black;
+}
+
+.tab_bg_1 {
+    background-color: #fee8d8;
+    border-width: 1px;
+    border-color: black;
+}
+
+.tab_bg_2 {
+    background-color: #fed8fc;
+    border-width: 1px;
+    border-color: black;
+}

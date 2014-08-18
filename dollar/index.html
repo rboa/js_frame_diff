@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+	<meta charset="utf-8">
+	<link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+	<!-- <link rel="stylesheet" href="bootstrap/css/bootstrap.min.css"> -->
+	<!-- <link rel="stylesheet" href="bootstrap/css/bootstrap-theme.min.css"> -->
+	<link rel="stylesheet" href="jobs.css">
+</head>
+<body>
+
+<div class='container-fluid'>
+	<div class='page-header'>
+		<h1 class='text-center'>jQuery/Bootstrap Job Implementation</h1>
+	</div>
+	<div class='row'>
+		<div class='col-md-5 col-md-offset-1'>
+			<button id='remove_killed' type='button' class='btn btn-primary'>Remove Killed</button>
+			<button id='load_delayed' type='button' class='btn btn-primary'>Add Delayed Job Proc</button>
+			<button id='load_jobs' type='button' class='btn btn-primary'>Load Jobs</button>
+		</div>
+	</div>
+	<hr/>
+	<div class='row'>
+		<div class='col-md-5 col-md-offset-1' id='user_btn_row'></div>
+	</div>
+	<hr/>
+
+	<div class='row'>
+		<div class='col-md-7'>
+			<div id='display_jobs' style='display:none'>
+				<ul id='jobs_tab' class='nav nav-pills nav-justified'></ul>
+				<div id='jobs_tab_content' class='tab-content'></div>
+			</div>
+			<div id='display_clear'>
+				<h3>No Jobs to Display</h3>
+			</div>
+		</div>
+		<div class='col-md-1'>
+		</div>
+		<div class='col-md-4'>
+			<div class='panel panel-danger'>
+				<div class='panel-heading'>
+					<h3 class="panel-title">Current Tasks</h3>
+				</div>
+				<ul class='list-group' id='kill_jobs_alert'>
+					<li id='kill_jobs_alert_empty' class='list-group-item'>no current tasks</li>
+				</ul>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+<!-- <script src="jquery-2.1.1.js"></script> -->
+<script src="http://cdnjs.cloudflare.com/ajax/libs/lodash.js/2.4.1/lodash.min.js"></script>
+<!-- <script src="underscore-1.6.0.js"></script> -->
+<script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+<!-- <script src="bootstrap/js/bootstrap.min.js"></script> -->
+<script src="jobs.js"></script>
+<script>
+	// data assumptions
+	// 		receive array of jobs
+	// job
+	// {
+	// 		run_id
+	// 		run_type: 'dsrm' or 'oculum'
+	// 		username: name
+	// 		title: scenario name
+	// 		starttime: js date
+	// 		port: port
+	// 		procs: []
+	// }
+	// 
+	// procs
+	// {
+	// 		name: name
+	// 		pid: pid
+	// 		machine: machine name
+	// }
+	// 
+	// when to remove job
+	// 		have a tornado timeout push job status every 5 seconds and create a job_list task (single run) for
+	// 		dsrm and/or oculum if a job is running
+	// 	- if a job has not been 
+	// 
+	var port_base = 9075;
+	var pid_base = 2000;
+	var run_count = 0;
+
+	var create_raw_sample_job = function(user) {
+		run_count++;
+		port_base = port_base+100;
+		pid_base = pid_base+100;
+		var num_procs = _.random(3,9);
+		var job = {};
+		job.port = port_base;
+		job.username = user;
+		job.run_id = 'scenario_'+run_count;
+		job.scenario = 'study '+run_count;
+		job.starttime = new Date();
+		job.procs = [];
+		job.procs.push({name: 'main', pid: pid_base, port: port_base, machine: 'hal-9000', status: 'running'});
+		_(num_procs).times(function(j) {
+			var m = {name: 'model '+(j+1), pid: pid_base+10+2*j, port: port_base, machine: 'hal-900'+j, status: 'running'};
+			job.procs.push(m);
+		});
+		return job;
+	}
+
+	var users = ['moe', 'larry', 'curly'];
+
+	_.each(users, function(u) {
+		$('#user_btn_row').append('<button type="button" class="btn btn-primary" data-user="'+u+'">Add Jobs '+u+'</button>');
+	});
+
+	var username = 'larry';
+	set_user_main(username);
+	var raw_jobs = []
+
+	var add_new_job = function(user) {
+		raw_jobs.push(create_raw_sample_job(user));
+		process_jobs(raw_jobs);
+	}
+	
+	// console.log('raw_jobs00='+JSON.stringify(raw_jobs));
+
+	$('div#user_btn_row button').on('click', function() {
+		console.log('user '+$(this).data('user')+' clicked');
+		add_new_job($(this).data('user'));
+	});
+
+	$('#load_jobs').on('click', function() {
+		_(3).times(function(){_.each(users, add_new_job)});
+	});
+
+	$('#remove_killed').on('click', function() {
+		remove_killed_things();
+	})
+
+	var duser = false;
+	var djob = false;
+	var dprocs = [];
+	var djobs_timeout = false;
+
+	var process_djobs = function() {
+		console.log('adding proc');
+		if (dprocs.length) {
+			djob.procs.push(dprocs.pop());
+			process_jobs(raw_jobs);
+			if (dprocs.length) {
+				window.setTimeout(process_djobs, 500);
+			}
+		}
+	}
+	$('#load_delayed').on('click', function() {
+		duser = $('li.active').data('user') || username;
+		djob = create_raw_sample_job(duser);
+		var delta = djob.procs.length - 1;
+		_(delta).times(function() {dprocs.push(djob.procs.pop())});
+		raw_jobs.push(djob);
+		process_jobs(raw_jobs);
+		djobs_timeout = window.setTimeout(process_djobs, 500);
+	});
+
+	var remove_killed_things = function() {
+		$('#kill_jobs_alert li').not('#kill_jobs_alert_empty').each(function() {
+			var run_id = $(this).data('run_id');
+			var pid = $(this).data('pid');
+			// console.log('remove run_id='+run_id);
+			// console.log('remove pid='+pid);
+			if (pid) {
+				var r = _.find(raw_jobs, function(j){return j.run_id === run_id;});
+				r.procs = _.filter(r.procs, function(p){return p.pid !== pid;});
+			} else {
+				raw_jobs = _.filter(raw_jobs, function(j){return j.run_id !== run_id;});
+			}
+		});
+		process_jobs(raw_jobs);
+	}
+
+</script>
+</body>
+</html>
